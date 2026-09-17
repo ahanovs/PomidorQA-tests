@@ -167,14 +167,11 @@ test("основной путь + гонка за слот: регистраци
         await guestPage.reload();
       }
 
-      await expect(dayChip).toBeVisible();
+      await dayChip.click();
+      await bookingCalendarTime(guestPage).first().click();
+
+      await expect(bookingConfirmDialog(guestPage)).toBeVisible();
     }).toPass({ timeout: 10_000 });
-
-    await bookingCalendarDay(guestPage).first().click();
-    await bookingCalendarTime(guestPage).first().click();
-
-    await expect(bookingConfirmDialog(guestPage))
-      .toBeVisible();
   });
 
   await test.step("Гость2: регистрируется и открывает тот же слот", async () => {
@@ -187,8 +184,7 @@ test("основной путь + гонка за слот: регистраци
       .filter({ hasText: host.name })
       .click();
 
-    await expect(personName(guest2Page))
-      .toHaveText(host.name);
+    await expect(personName(guest2Page)).toHaveText(host.name);
 
     await expect(async () => {
       const dayChip = bookingCalendarDay(guest2Page).first();
@@ -197,14 +193,11 @@ test("основной путь + гонка за слот: регистраци
         await guest2Page.reload();
       }
 
-      await expect(dayChip).toBeVisible();
+      await dayChip.click();
+      await bookingCalendarTime(guest2Page).first().click();
+
+      await expect(bookingConfirmDialog(guest2Page)).toBeVisible();
     }).toPass({ timeout: 10_000 });
-
-    await bookingCalendarDay(guest2Page).first().click();
-    await bookingCalendarTime(guest2Page).first().click();
-
-    await expect(bookingConfirmDialog(guest2Page))
-      .toBeVisible();
   });
 
   await test.step("Гость: подтверждает бронирование первым", async () => {

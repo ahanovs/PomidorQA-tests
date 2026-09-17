@@ -91,6 +91,7 @@ test.describe("Бронирование: отмена встречи", () => {
 
     await test.step("Гость: подтверждает бронирование", async () => {
       await guestBookingPage.confirmBooking();
+      await guestPage.waitForLoadState("domcontentloaded");
     });
 
     await test.step("Гость: видит успешное бронирование", async () => {
