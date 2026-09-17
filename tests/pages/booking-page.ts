@@ -123,14 +123,10 @@ export class BookingPage {
         return this.bookingsCards.first().locator("p").first();
     }
 
-    bookingCancelButton(): Locator {
-        return this.bookingsUpcomingSection.getByRole("button", {
-            name: "Отменить",
-        });
-    }
-
     async cancelFirstBooking(): Promise<void> {
-        await this.bookingCancelButton().click();
+        await this.bookingsUpcomingSection
+            .getByRole("button", { name: "Отменить" })
+            .click();
     }
 
     pastBookingCardName(): Locator {
