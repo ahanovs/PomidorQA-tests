@@ -117,7 +117,7 @@ export class BookingPage {
 
     async confirmBooking(): Promise<void> {
         await this.bookingConfirmButton.click();
-        await this.page.waitForLoadState("networkidle");
+        await this.page.waitForURL(/\/pomidorqa\/bookings/);
     }
 
     bookingCardName(): Locator {
