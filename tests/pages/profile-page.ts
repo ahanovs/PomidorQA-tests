@@ -1,8 +1,6 @@
 import { type Locator, type Page } from "@playwright/test";
+import { ROUTES } from "../helpers/user";
 
-const ROUTES = {
-    profile: "/pomidorqa/profile",
-};
 
 export class ProfilePage {
     readonly page: Page;
