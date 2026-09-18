@@ -89,11 +89,16 @@ test.describe("Бронирование: отмена встречи", () => {
       await guestBookingPage.selectFirstSlot();
     });
 
+    await test.step("Гость: видит диалог подтверждения бронирования", async () => {
+      await expect(guestBookingPage.bookingConfirmDialog).toBeVisible();
+    });
+
     await test.step("Гость: подтверждает бронирование", async () => {
       await guestBookingPage.confirmBooking();
-      await expect(guestBookingPage.bookingConfirmSuccess).toBeVisible({
-        timeout: 15_000,
-      });
+    });
+
+    await test.step("Гость: видит успешное бронирование", async () => {
+      await expect(guestBookingPage.bookingConfirmSuccess).toBeVisible();
     });
 
     await test.step("Гость: открывает «Мои встречи»", async () => {
