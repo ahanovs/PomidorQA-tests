@@ -240,13 +240,27 @@ test.describe("Гость и ограничения бронирования Pom
             });
 
 
-            await test.step("Хост добавляет слот через 1 час", async () => {
+            await test.step("Хост добавляет слот менее чем через 2 часа", async () => {
                 await hostBooking.goToSlots();
-                const soon = new Date();
-                soon.setHours(soon.getHours() + 1);
-                soon.setMinutes(0, 0, 0);
-                const dateStr = soon.toISOString().slice(0, 10);
-                timeStr = soon.toTimeString().slice(0, 5);
+
+                const soon = new Date(Date.now() + 90 * 60 * 1000);
+
+                const parts = new Intl.DateTimeFormat("en-CA", {
+                    timeZone: "Europe/Moscow",
+                    year: "numeric",
+                    month: "2-digit",
+                    day: "2-digit",
+                    hour: "2-digit",
+                    minute: "2-digit",
+                    hourCycle: "h23",
+                }).formatToParts(soon);
+
+                const part = (type: Intl.DateTimeFormatPartTypes) =>
+                    parts.find((item) => item.type === type)?.value ?? "";
+
+                const dateStr = `${part("year")}-${part("month")}-${part("day")}`;
+                timeStr = `${part("hour")}:${part("minute")}`;
+
                 await hostBooking.addSlot(dateStr, timeStr);
             });
 
