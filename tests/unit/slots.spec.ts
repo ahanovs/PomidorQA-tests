@@ -1,8 +1,6 @@
 import { test, expect } from "@playwright/test";
 import { slotsOverlap, isPasswordValid, formatSlotTime, type TimeRange } from "../../src/pyramid/slots";
 
-//Юниты заппуск npx playwright test tests/unit/slots.spec.ts
-
 test.describe("Unit: пересечение слотов по времени", () => {
   test("пересекающиеся слоты — overlap === true", () => {
     const slotA: TimeRange = { start: new Date("2026-08-01T10:00:00"), end: new Date("2026-08-01T10:25:00") };

@@ -23,7 +23,7 @@ const TEST_ACCOUNTS_ENDPOINT = "/api/pomidorqa/test/accounts";
 
 export function makeUser(role: string, runId: number): TestUser {
   return {
-    name: `${role} Автотест`,
+    name: `${role}-${runId} Автотест`,
     email: `${role}-${runId}@example.com`,
     password: "testpass123",
   };
@@ -68,10 +68,13 @@ export async function cleanupUsersViaApi(
 
     for (const result of results) {
       if (result.status === "rejected") {
-        console.warn(
-          "Не удалось удалить тестового участника:",
-          result.reason,
-        );
+        const error = result.reason as Error;
+        if (!error.message.includes("401")) {
+          console.warn(
+            "Не удалось удалить тестового участника:",
+            result.reason,
+          );
+        }
       }
     }
   } finally {
