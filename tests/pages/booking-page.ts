@@ -1,4 +1,4 @@
-import { type Locator, type Page } from "@playwright/test";
+import { expect, type Locator, type Page } from "@playwright/test";
 import { ROUTES } from "../helpers/user";
 
 export class BookingPage {
@@ -71,26 +71,32 @@ export class BookingPage {
             .getByRole("button");
 
         this.bookingConfirmDialog = page.getByRole("dialog");
+
         this.bookingConfirmButton = this.bookingConfirmDialog.getByRole(
             "button",
             { name: "Подтвердить" },
         );
+
         this.bookingConfirmSuccess = this.bookingConfirmDialog.getByRole(
             "status",
         );
+
         this.bookingConfirmError = this.bookingConfirmDialog.getByRole(
             "alert",
         );
 
         this.bookingsUpcomingSection = page.getByTestId("upcoming-meetings");
+
         this.bookingsPastSection = page.locator("section").filter({
             has: page.getByRole("heading", {
                 name: "Прошедшие и отменённые",
             }),
         });
+
         this.bookingsCards = this.bookingsUpcomingSection.locator(
             "[data-booking-id]",
         );
+
         this.pastBookingsCards = this.bookingsPastSection.locator(
             "[data-booking-id]",
         );
@@ -150,8 +156,17 @@ export class BookingPage {
 
         const firstTime = this.calendarTimeChip();
 
-        await firstTime.waitFor({ state: "visible" });
+        await expect(firstTime).toBeVisible({
+            timeout: 15_000,
+        });
+
+        await expect(firstTime).toBeEnabled();
+
         await firstTime.click();
+
+        await expect(this.bookingConfirmDialog).toBeVisible({
+            timeout: 15_000,
+        });
     }
 
     async selectSlotAt(time: string): Promise<void> {
@@ -161,8 +176,17 @@ export class BookingPage {
             hasText: time,
         });
 
-        await timeChip.waitFor({ state: "visible" });
+        await expect(timeChip).toBeVisible({
+            timeout: 15_000,
+        });
+
+        await expect(timeChip).toBeEnabled();
+
         await timeChip.click();
+
+        await expect(this.bookingConfirmDialog).toBeVisible({
+            timeout: 15_000,
+        });
     }
 
     async confirmBooking(): Promise<void> {
