@@ -95,7 +95,9 @@ test.describe("Слоты: создание, удаление, валидаци�
 
         await test.step("Добавляем свободный слот на завтра", async () => {
             await bookingPage.addSlot(date, time);
+        });
 
+        await test.step("Свободный слот появился в списке", async () => {
             await expect(bookingPage.slotCard(time)).toBeVisible({
                 timeout: 10_000,
             });
@@ -143,20 +145,26 @@ test.describe("Слоты: создание, удаление, валидаци�
         await test.step("Владелец добавляет навык для поиска", async () => {
             await ownerProfilePage.open();
             await ownerProfilePage.addCanHelpSkill(skillTag);
+        });
 
-            await expect(ownerProfilePage.canHelpSkills).toContainText(skillTag);
+        await test.step("Навык виден в профиле владельца", async () => {
+            await expect(ownerProfilePage.canHelpSkills).toContainText(
+                skillTag,
+            );
         });
 
         await test.step("Владелец создаёт свободный слот на завтра", async () => {
             await ownerBookingPage.goToSlots();
             await ownerBookingPage.addSlot(date, time);
+        });
 
+        await test.step("Свободный слот виден владельцу", async () => {
             await expect(ownerBookingPage.slotCard(time)).toBeVisible({
                 timeout: 10_000,
             });
         });
 
-        await test.step("Гость находит владельца и бронирует слот", async () => {
+        await test.step("Гость находит страницу владельца", async () => {
             await guestBookingPage.openCatalog();
             await guestBookingPage.findPersonBySkill(skillTag);
 
@@ -165,27 +173,53 @@ test.describe("Слоты: создание, удаление, валидаци�
             });
 
             await guestBookingPage.openPersonCard(owner.name);
-            await guestBookingPage.selectFirstSlot();
+        });
 
-            await expect(guestBookingPage.bookingConfirmDialog).toBeVisible({
+        await test.step("Гость видит свободный слот владельца", async () => {
+            await expect(guestBookingPage.bookingCalendarDays).toBeVisible({
                 timeout: 10_000,
             });
 
-            await guestBookingPage.confirmBooking();
+            await expect(
+                guestBookingPage.bookingCalendarTimes.filter({
+                    hasText: time,
+                }),
+            ).toBeVisible({
+                timeout: 10_000,
+            });
+        });
 
+        await test.step("Гость выбирает свободный слот", async () => {
+            await guestBookingPage.selectSlotAt(time);
+        });
+
+        await test.step("Открывается окно подтверждения бронирования", async () => {
+            await expect(guestBookingPage.bookingConfirmDialog).toBeVisible({
+                timeout: 10_000,
+            });
+        });
+
+        await test.step("Гость подтверждает бронирование", async () => {
+            await guestBookingPage.confirmBooking();
+        });
+
+        await test.step("Бронирование подтверждено", async () => {
             await expect(guestBookingPage.bookingConfirmSuccess).toBeVisible({
                 timeout: 15_000,
             });
         });
 
-        await test.step("Владелец не может удалить забронированный слот", async () => {
-            await ownerBookingPage.goToSlots();
+        await test.step(
+            "Владелец не может удалить забронированный слот",
+            async () => {
+                await ownerBookingPage.goToSlots();
 
-            const deleteButton = ownerBookingPage
-                .slotCard(time)
-                .getByRole("button", { name: "Удалить" });
+                const deleteButton = ownerBookingPage
+                    .slotCard(time)
+                    .getByRole("button", { name: "Удалить" });
 
-            await expect(deleteButton).toHaveCount(0);
-        });
+                await expect(deleteButton).toHaveCount(0);
+            },
+        );
     });
 });
