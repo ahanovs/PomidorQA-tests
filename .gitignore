@@ -4,3 +4,10 @@ test-results/
 .env
 .env.local
 *.log
+tests/e2e/booking-rules.spec.ts
+tests/e2e/guest-and-limits.spec.ts
+tests/e2e/person-card-details.spec.ts
+tests/e2e/profile-defaults.spec.ts
+tests/e2e/profile-edit.spec.ts
+tests/e2e/skill-delete.spec.ts
+tests/e2e/slots-flow.spec.ts
