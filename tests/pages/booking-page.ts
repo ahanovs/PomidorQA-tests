@@ -147,14 +147,22 @@ export class BookingPage {
 
     async selectFirstSlot(): Promise<void> {
         await this.calendarDayChip().click();
-        await this.calendarTimeChip().click();
+
+        const firstTime = this.calendarTimeChip();
+
+        await firstTime.waitFor({ state: "visible" });
+        await firstTime.click();
     }
 
     async selectSlotAt(time: string): Promise<void> {
         await this.calendarDayChip().click();
-        await this.bookingCalendarTimes
-            .filter({ hasText: time })
-            .click();
+
+        const timeChip = this.bookingCalendarTimes.filter({
+            hasText: time,
+        });
+
+        await timeChip.waitFor({ state: "visible" });
+        await timeChip.click();
     }
 
     async confirmBooking(): Promise<void> {
