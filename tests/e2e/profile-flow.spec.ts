@@ -40,8 +40,11 @@ test.describe("Профиль: действия с полями и навыка�
             await profilePage.changeNameAndSave(newName);
         });
 
-        await test.step("После перезагрузки имя пришло с сервера", async () => {
+        await test.step("Пользователь перезагружает страницу профиля", async () => {
             await page.reload();
+        });
+
+        await test.step("После перезагрузки имя пришло с сервера", async () => {
             await expect(profilePage.profileNameInput).toHaveValue(newName);
         });
     });
@@ -53,8 +56,11 @@ test.describe("Профиль: действия с полями и навыка�
             await profilePage.changeTimezoneAndSave(timezone);
         });
 
-        await test.step("После перезагрузки выбран новый пояс", async () => {
+        await test.step("Пользователь перезагружает страницу профиля", async () => {
             await page.reload();
+        });
+
+        await test.step("После перезагрузки выбран новый пояс", async () => {
             await expect(profilePage.profileTimezoneSelect).toHaveValue(timezone);
         });
     });
@@ -66,8 +72,11 @@ test.describe("Профиль: действия с полями и навыка�
             await profilePage.addTelegramAndSave(telegram);
         });
 
-        await test.step("После перезагрузки Telegram пришёл с сервера", async () => {
+        await test.step("Пользователь перезагружает страницу профиля", async () => {
             await page.reload();
+        });
+
+        await test.step("После перезагрузки Telegram пришёл с сервера", async () => {
             await expect(profilePage.profileTelegramInput).toHaveValue(telegram);
         });
     });
@@ -79,8 +88,11 @@ test.describe("Профиль: действия с полями и навыка�
             await profilePage.addBioAndSave(bio);
         });
 
-        await test.step("После перезагрузки текст пришёл с сервера", async () => {
+        await test.step("Пользователь перезагружает страницу профиля", async () => {
             await page.reload();
+        });
+
+        await test.step("После перезагрузки текст пришёл с сервера", async () => {
             await expect(profilePage.profileBioInput).toHaveValue(bio);
         });
     });
@@ -166,9 +178,11 @@ test.describe("Профиль: действия с полями и навыка�
             await profilePage.fillNameTelegramBioAndSave(name, telegram, bio);
         });
 
-        await test.step("После перезагрузки все три значения пришли с сервера", async () => {
+        await test.step("Пользователь перезагружает страницу профиля", async () => {
             await page.reload();
+        });
 
+        await test.step("После перезагрузки все три значения пришли с сервера", async () => {
             await expect.soft(profilePage.profileNameInput).toHaveValue(name);
             await expect.soft(profilePage.profileTelegramInput).toHaveValue(telegram);
             await expect.soft(profilePage.profileBioInput).toHaveValue(bio);
