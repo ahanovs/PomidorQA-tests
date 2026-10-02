@@ -83,7 +83,7 @@ test.describe("API: бронирование слота PomidorQA", () => {
   });
 });
 
-test.describe("API: регистрация участника PomidorQA ", () => {
+test.describe("API: регистрация участника PomidorQA", () => {
   let api: APIRequestContext;
   let close: () => Promise<void>;
 
@@ -99,22 +99,25 @@ test.describe("API: регистрация участника PomidorQA ", () =>
   });
 
   test("регистрация нового участника — 201, аккаунт создан с переданными данными", async () => {
-    const email = `new-participant-${Date.now()}@example.com`;
+    const runId = Date.now();
+    const name = `Новый Участник ${runId}`;
+    const email = `new-participant-${runId}@example.com`;
 
-    const response = await api.post("/participants", { data: { name: "Новый Участник", email } });
+    const response = await api.post("/participants", { data: { name, email } });
 
     expect(response.status()).toBe(201);
     const participant = await response.json();
-    expect(participant.name).toBe("Новый Участник");
+    expect(participant.name).toBe(name);
     expect(participant.email).toBe(email);
     expect(participant.id).toBeTruthy();
   });
 
   test("повторная регистрация с тем же email — 409 email_taken", async () => {
-    const email = `duplicate-${Date.now()}@example.com`;
-    await api.post("/participants", { data: { name: "Первый", email } });
+    const runId = Date.now();
+    const email = `duplicate-${runId}@example.com`;
+    await api.post("/participants", { data: { name: `Первый ${runId}`, email } });
 
-    const response = await api.post("/participants", { data: { name: "Второй", email } });
+    const response = await api.post("/participants", { data: { name: `Второй ${runId}`, email } });
 
     expect(response.status()).toBe(409);
     expect((await response.json()).error).toBe("email_taken");
