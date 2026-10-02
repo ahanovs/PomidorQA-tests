@@ -155,17 +155,36 @@ export class BookingPage {
         return this.bookingCalendarTimes.filter({ hasText: time });
     }
 
+    // Страница участника отрисована сервером: кнопки календаря видны из HTML,
+    // но это React — обработчики кликов прикрепляются только после гидратации.
+    // На медленном канале (CI-раннер далеко от стенда) бандл грузится секунды,
+    // и клик по «видимой, но ещё неживой» кнопке теряется. Ждём служебные
+    // ключи React на кнопке календаря — признак прикреплённых обработчиков.
+    private async waitUntilCalendarInteractive(): Promise<void> {
+        await this.page.waitForFunction(
+            () => {
+                const chip = document.querySelector('[role="group"] button');
+                return (
+                    chip !== null &&
+                    Object.keys(chip).some((k) => k.startsWith("__reactProps$"))
+                );
+            },
+            undefined,
+            { timeout: 15_000 },
+        );
+    }
+
     async selectFirstSlot(): Promise<void> {
+        await this.waitUntilCalendarInteractive();
         await this.calendarDayChip().click();
         await this.calendarTimeChip().click();
     }
 
     async selectSlotAt(time: string): Promise<void> {
+        await this.waitUntilCalendarInteractive();
         await this.calendarDayChip().click();
 
-        const timeChip = this.bookingCalendarTimes.filter({
-            hasText: time,
-        });
+        const timeChip = this.calendarTimeChipAt(time);
 
         await timeChip.click();
     }

@@ -90,7 +90,7 @@ test.describe("Гость и ограничения бронирования Pom
 
                 await test.step("Открывается окно подтверждения бронирования", async () => {
                     await expect(booking.bookingConfirmDialog).toBeVisible({
-                        timeout: 10_000,
+                        timeout: 15_000,
                     });
                 });
 
@@ -185,7 +185,7 @@ test.describe("Гость и ограничения бронирования Pom
                         await expect(
                             guestBooking.bookingConfirmDialog,
                         ).toBeVisible({
-                            timeout: 10_000,
+                            timeout: 15_000,
                         });
                     },
                 );
@@ -286,7 +286,7 @@ test.describe("Гость и ограничения бронирования Pom
                         await expect(
                             guestBooking.bookingConfirmDialog,
                         ).toBeVisible({
-                            timeout: 10_000,
+                            timeout: 15_000,
                         });
                     },
                 );
