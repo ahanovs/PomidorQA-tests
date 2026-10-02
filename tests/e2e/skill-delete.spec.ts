@@ -65,12 +65,14 @@ test.describe("Навыки: удаление", () => {
                 await expect(host.hostProfile.skillChip(skillTag)).toHaveCount(0);
             });
 
+            await test.step("Гость снова ищет хоста по навыку", async () => {
+                await guestBooking.openCatalog();
+                await guestBooking.findPersonBySkill(skillTag);
+            });
+
             await test.step(
                 "После удаления навыка гость больше не находит хоста",
                 async () => {
-                    await guestBooking.openCatalog();
-                    await guestBooking.findPersonBySkill(skillTag);
-
                     await expect(guestBooking.catalogEmptyState).toBeVisible({
                         timeout: 10_000,
                     });
