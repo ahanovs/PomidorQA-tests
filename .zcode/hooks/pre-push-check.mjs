@@ -16,21 +16,32 @@ import { readFileSync } from "node:fs";
 
 const projectDir = process.env.ZCODE_PROJECT_DIR ?? process.cwd();
 
+// --git-hook: скрипт вызван гит-хуком .githooks/pre-push (stdin там —
+// строки refs, не JSON), считаем это пушем безусловно.
+const gitHookMode = process.argv.slice(2).includes("--git-hook");
+
 function log(message) {
   process.stderr.write(`${message}\n`);
 }
 
 function readHookCommand() {
   if (process.stdin.isTTY) {
-    return "git push"; // ручной запуск в терминале — проверяем как пуш
+    log("hook: ручной запуск в терминале — проверяем как пуш");
+    return "git push";
   }
 
   try {
     const input = JSON.parse(readFileSync(0, "utf8"));
+    log(
+      "hook: вызван, ключи входа: " +
+        Object.keys(input ?? {}).join(", ") +
+        (input?.hook_event_name ? ` (${input.hook_event_name})` : ""),
+    );
     // ZCode кладёт команду в tool_input.command; на всякий случай понимаем
     // и курсовый формат Cursor (input.command). Непонятный вход — не блокируем.
     return input?.tool_input?.command ?? input?.command ?? "";
   } catch {
+    log("hook: вызван, вход не разобрался — пропускаю");
     return "";
   }
 }
@@ -76,7 +87,7 @@ function runCheck(title, commandLine) {
   return true;
 }
 
-const shellCommand = readHookCommand();
+const shellCommand = gitHookMode ? "git push" : readHookCommand();
 
 // Регулярка из курсового скрипта: ловит "git push", "git -C ... push",
 // "... && git push", но не "git status".

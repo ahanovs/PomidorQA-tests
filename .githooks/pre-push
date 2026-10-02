@@ -1,0 +1,4 @@
+#!/bin/sh
+# Pre-push gate: линт + быстрые тесты (unit + api) перед отправкой.
+# Активация (один раз на клон): git config core.hooksPath .githooks
+node .zcode/hooks/pre-push-check.mjs --git-hook
