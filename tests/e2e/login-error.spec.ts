@@ -1,5 +1,9 @@
 import { expect, test } from "@playwright/test";
-import { deleteUserViaApi, makeUser, registerUserViaApi } from "../helpers/user";
+import {
+  deleteCurrentTestUser,
+  makeUser,
+  registerUserViaApi,
+} from "../helpers/user";
 import { LoginPage } from "../pages/login-page";
 
 test.describe("Вход: сообщения об ошибках", () => {
@@ -44,7 +48,7 @@ test.describe("Вход: сообщения об ошибках", () => {
                 expect(wrongPasswordError).toContain("Неверный");
             });
         } finally {
-            await deleteUserViaApi(request);
+            await deleteCurrentTestUser(request);
         }
     });
 });
