@@ -49,7 +49,7 @@ export async function registerUserViaApi(
   return response.json();
 }
 
-export async function deleteUserViaApi(
+export async function deleteCurrentTestUser(
   request: APIRequestContext,
 ): Promise<void> {
   const response = await request.delete(TEST_ACCOUNTS_ENDPOINT);
@@ -66,7 +66,7 @@ export async function cleanupUsersViaApi(
 ): Promise<void> {
   try {
     const results = await Promise.allSettled(
-      contexts.map((context) => deleteUserViaApi(context.request)),
+        contexts.map((context) => deleteCurrentTestUser(context.request)),
     );
 
     for (const result of results) {

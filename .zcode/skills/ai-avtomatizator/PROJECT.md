@@ -30,7 +30,7 @@
 - `RegisteredParticipant`;
 - `makeUser(role, runId)`;
 - `registerUserViaApi(request, user)`;
-- `deleteUserViaApi(request)`;
+- `deleteCurrentTestUser(request)`;
 - `cleanupUsersViaApi(contexts)`;
 - `ROUTES` — адреса страниц (`catalog`, `profile`, `slots`, `bookings`, `login`, `register`).
 
