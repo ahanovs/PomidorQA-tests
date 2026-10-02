@@ -8,8 +8,8 @@ import {
   makeUser,
   registerUserViaApi,
 } from "../helpers/user";
+import { createHostWithSkillAndSlot } from "../helpers/arrange";
 import { BookingPage } from "../pages/booking-page";
-import { ProfilePage } from "../pages/profile-page";
 
 test.describe("Бронирование: отмена встречи", () => {
   const contexts: BrowserContext[] = [];
@@ -26,39 +26,22 @@ test.describe("Бронирование: отмена встречи", () => {
 
     const runId = Date.now();
     const skillTag = `Playwright-cancel-${runId}`;
-    const host = makeUser("host", runId);
     const guest = makeUser("guest", runId);
-
-    const hostContext = await browser.newContext();
-    contexts.push(hostContext);
 
     const guestContext = await browser.newContext();
     contexts.push(guestContext);
 
-    const hostPage = await hostContext.newPage();
     const guestPage = await guestContext.newPage();
-
-    const hostBookingPage = new BookingPage(hostPage);
     const guestBookingPage = new BookingPage(guestPage);
-    const hostProfilePage = new ProfilePage(hostPage);
 
-    await test.step("Хост: регистрируется через API", async () => {
-      await registerUserViaApi(hostContext.request, host);
-    });
-
-    await test.step("Хост: добавляет навык", async () => {
-      await hostProfilePage.open();
-      await hostProfilePage.addCanHelpSkill(skillTag);
-    });
-
-    await test.step("Хост: добавляет свободный слот на завтра", async () => {
-      await hostBookingPage.goToSlots();
-
-      const tomorrow = new Date(Date.now() + 24 * 60 * 60 * 1000);
-      const date = tomorrow.toISOString().slice(0, 10);
-
-      await hostBookingPage.addSlot(date, "12:00");
-    });
+    const host = await test.step("Хост: готовим профиль с навыком и свободным слотом на завтра", () =>
+      createHostWithSkillAndSlot(browser, contexts, {
+        role: "host",
+        skillTag,
+        slotTime: "12:00",
+      }),
+    );
+    const hostBookingPage = host.hostBooking;
 
     await test.step("Хост: видит добавленный слот", async () => {
       await expect(hostBookingPage.slotCard("12:00")).toBeVisible({
@@ -68,7 +51,10 @@ test.describe("Бронирование: отмена встречи", () => {
 
     await test.step("Гость: регистрируется через API", async () => {
       await registerUserViaApi(guestContext.request, guest);
-      await guestPage.goto("/pomidorqa");
+    });
+
+    await test.step("Гость: открывает каталог", async () => {
+      await guestBookingPage.openCatalog();
     });
 
     await test.step("Гость: ищет хоста по навыку", async () => {
@@ -76,7 +62,7 @@ test.describe("Бронирование: отмена встречи", () => {
     });
 
     await test.step("Гость: открывает карточку хоста", async () => {
-      await guestBookingPage.openPersonCard(host.name);
+      await guestBookingPage.openPersonCard(host.host.name);
     });
 
     await test.step("Гость: видит доступный слот", async () => {
@@ -90,7 +76,9 @@ test.describe("Бронирование: отмена встречи", () => {
     });
 
     await test.step("Гость: видит диалог подтверждения бронирования", async () => {
-      await expect(guestBookingPage.bookingConfirmDialog).toBeVisible();
+      await expect(guestBookingPage.bookingConfirmDialog).toBeVisible({
+        timeout: 10_000,
+      });
     });
 
     await test.step("Гость: подтверждает бронирование", async () => {
@@ -98,7 +86,9 @@ test.describe("Бронирование: отмена встречи", () => {
     });
 
     await test.step("Гость: видит успешное бронирование", async () => {
-      await expect(guestBookingPage.bookingConfirmSuccess).toBeVisible();
+      await expect(guestBookingPage.bookingConfirmSuccess).toBeVisible({
+        timeout: 15_000,
+      });
     });
 
     await test.step("Гость: открывает «Мои встречи»", async () => {
@@ -106,7 +96,7 @@ test.describe("Бронирование: отмена встречи", () => {
     });
 
     await test.step("Гость: видит будущую встречу с хостом", async () => {
-      await expect(guestBookingPage.bookingCardName()).toHaveText(host.name, {
+      await expect(guestBookingPage.bookingCardName()).toHaveText(host.host.name, {
         timeout: 10_000,
       });
     });
@@ -115,12 +105,12 @@ test.describe("Бронирование: отмена встречи", () => {
       await guestBookingPage.cancelFirstBooking();
     });
 
-    await test.step("Гость: видит, что будущих встреч нет", async () => {
+    await test.step("Гость: будущих встреч больше нет", async () => {
       await expect(guestBookingPage.bookingsCards).toHaveCount(0);
     });
 
     await test.step("Гость: видит отменённую встречу в прошедших", async () => {
-      await expect(guestBookingPage.pastBookingCardName()).toHaveText(host.name);
+      await expect(guestBookingPage.pastBookingCardName()).toHaveText(host.host.name);
       await expect(guestBookingPage.pastBookingCardStatus()).toContainText(
         "отменено",
       );
@@ -131,7 +121,7 @@ test.describe("Бронирование: отмена встречи", () => {
     });
 
     await test.step("После reload гость видит отменённую встречу", async () => {
-      await expect(guestBookingPage.pastBookingCardName()).toHaveText(host.name, {
+      await expect(guestBookingPage.pastBookingCardName()).toHaveText(host.host.name, {
         timeout: 10_000,
       });
       await expect(guestBookingPage.pastBookingCardStatus()).toContainText(
@@ -144,7 +134,7 @@ test.describe("Бронирование: отмена встречи", () => {
     });
 
     await test.step("Хост: перезагружает страницу", async () => {
-      await hostPage.reload();
+      await host.hostPage.reload();
     });
 
     await test.step("После reload хост не видит будущую встречу", async () => {

@@ -2,6 +2,7 @@ import {
     expect,
     test,
     type BrowserContext,
+    type Page,
 } from "@playwright/test";
 import {
     cleanupUsersViaApi,
@@ -12,26 +13,27 @@ import { ProfilePage } from "../pages/profile-page";
 
 test.describe("Профиль: действия с полями и навыками", () => {
     const contexts: BrowserContext[] = [];
+    let page: Page;
+    let profilePage: ProfilePage;
 
-    test.afterEach(async () => {
-        await cleanupUsersViaApi(contexts);
-        contexts.length = 0;
-    });
-
-    test("имя сохраняется после перезагрузки", async ({ browser }) => {
+    test.beforeEach(async ({ browser }) => {
         const context = await browser.newContext();
         contexts.push(context);
 
         const user = makeUser("hw16", Date.now());
         await registerUserViaApi(context.request, user);
 
-        const page = await context.newPage();
-        const profilePage = new ProfilePage(page);
+        page = await context.newPage();
+        profilePage = new ProfilePage(page);
+        await profilePage.open();
+    });
 
-        await test.step("Открываем профиль участника", async () => {
-            await profilePage.open();
-        });
+    test.afterEach(async () => {
+        await cleanupUsersViaApi(contexts);
+        contexts.length = 0;
+    });
 
+    test("имя сохраняется после перезагрузки", async () => {
         const newName = `Тимур Тестович ${Date.now()}`;
 
         await test.step("Заполняем поле имени и сохраняем", async () => {
@@ -44,20 +46,7 @@ test.describe("Профиль: действия с полями и навыка�
         });
     });
 
-    test("часовой пояс выбирается и сохраняется", async ({ browser }) => {
-        const context = await browser.newContext();
-        contexts.push(context);
-
-        const user = makeUser("hw16", Date.now());
-        await registerUserViaApi(context.request, user);
-
-        const page = await context.newPage();
-        const profilePage = new ProfilePage(page);
-
-        await test.step("Открываем профиль участника", async () => {
-            await profilePage.open();
-        });
-
+    test("часовой пояс выбирается и сохраняется", async () => {
         const timezone = "Asia/Yekaterinburg";
 
         await test.step("Выбираем часовой пояс и сохраняем", async () => {
@@ -70,20 +59,7 @@ test.describe("Профиль: действия с полями и навыка�
         });
     });
 
-    test("telegram заполняется и сохраняется", async ({ browser }) => {
-        const context = await browser.newContext();
-        contexts.push(context);
-
-        const user = makeUser("hw16", Date.now());
-        await registerUserViaApi(context.request, user);
-
-        const page = await context.newPage();
-        const profilePage = new ProfilePage(page);
-
-        await test.step("Открываем профиль участника", async () => {
-            await profilePage.open();
-        });
-
+    test("telegram заполняется и сохраняется", async () => {
         const telegram = `@qa_timur_cat_${Date.now()}`;
 
         await test.step("Заполняем Telegram и сохраняем", async () => {
@@ -96,20 +72,7 @@ test.describe("Профиль: действия с полями и навыка�
         });
     });
 
-    test("о себе: многострочное поле сохраняется", async ({ browser }) => {
-        const context = await browser.newContext();
-        contexts.push(context);
-
-        const user = makeUser("hw16", Date.now());
-        await registerUserViaApi(context.request, user);
-
-        const page = await context.newPage();
-        const profilePage = new ProfilePage(page);
-
-        await test.step("Открываем профиль участника", async () => {
-            await profilePage.open();
-        });
-
+    test("о себе: многострочное поле сохраняется", async () => {
         const bio = `QA-инженер, прогон ${Date.now()}. Пытаюсь разобраться в Playwright.`;
 
         await test.step("Заполняем «О себе» и сохраняем", async () => {
@@ -122,20 +85,7 @@ test.describe("Профиль: действия с полями и навыка�
         });
     });
 
-    test("навык «могу помочь» добавляется и виден в блоке", async ({ browser }) => {
-        const context = await browser.newContext();
-        contexts.push(context);
-
-        const user = makeUser("hw16", Date.now());
-        await registerUserViaApi(context.request, user);
-
-        const page = await context.newPage();
-        const profilePage = new ProfilePage(page);
-
-        await test.step("Открываем профиль участника", async () => {
-            await profilePage.open();
-        });
-
+    test("навык «могу помочь» добавляется и виден в блоке", async () => {
         const skillTag = `Playwright-demo-${Date.now()}`;
 
         await test.step("Добавляем навык «могу помочь»", async () => {
@@ -147,51 +97,25 @@ test.describe("Профиль: действия с полями и навыка�
         });
     });
 
-    test("пустой навык не добавляется", async ({ browser }) => {
-        const context = await browser.newContext();
-        contexts.push(context);
-
-        const user = makeUser("hw16", Date.now());
-        await registerUserViaApi(context.request, user);
-
-        const page = await context.newPage();
-        const profilePage = new ProfilePage(page);
-
-        await test.step("Открываем профиль участника", async () => {
-            await profilePage.open();
-        });
-
+    test("пустой навык не добавляется", async () => {
         await test.step("Пытаемся добавить навык без названия", async () => {
             await profilePage.clickAddSkill();
         });
 
-        await test.step("Проверяем, что навык не появился", async () => {
+        await test.step("Навык не появился", async () => {
             await expect(profilePage.skillChips).toHaveCount(0);
             await expect(profilePage.canHelpSkills).not.toBeVisible();
         });
     });
 
-    test("дубликат навыка одного типа не добавляется", async ({ browser }) => {
-        const context = await browser.newContext();
-        contexts.push(context);
-
-        const user = makeUser("hw16", Date.now());
-        await registerUserViaApi(context.request, user);
-
-        const page = await context.newPage();
-        const profilePage = new ProfilePage(page);
-
-        await test.step("Открываем профиль участника", async () => {
-            await profilePage.open();
-        });
-
+    test("дубликат навыка одного типа не добавляется", async () => {
         const skillTag = `DuplicateSkill-${Date.now()}`;
 
         await test.step("Добавляем навык «могу помочь» первый раз", async () => {
             await profilePage.addSkill(skillTag, "can_help");
         });
 
-        await test.step("Проверяем, что первый навык появился", async () => {
+        await test.step("Первый навык появился", async () => {
             await expect(profilePage.canHelpSkills).toContainText(skillTag);
         });
 
@@ -199,33 +123,22 @@ test.describe("Профиль: действия с полями и навыка�
             await profilePage.addSkill(skillTag, "can_help");
         });
 
-        await test.step("Проверяем, что дубликат не появился", async () => {
+        await test.step("Дубликат не появился", async () => {
             await expect(profilePage.skillChips).toHaveCount(1);
             await expect(profilePage.canHelpSkills).toContainText(skillTag);
         });
     });
 
-    test("навык «хочу разобрать» не попадает в блок «могу помочь»", async ({ browser }) => {
-        const context = await browser.newContext();
-        contexts.push(context);
-
-        const user = makeUser("hw16", Date.now());
-        await registerUserViaApi(context.request, user);
-
-        const page = await context.newPage();
-        const profilePage = new ProfilePage(page);
-
-        await test.step("Открываем профиль участника", async () => {
-            await profilePage.open();
-        });
-
+    test("навык «хочу разобрать» не попадает в блок «могу помочь»", async () => {
         const runId = Date.now();
         const canHelpTag = `CanHelp-${runId}`;
         const wantToLearnTag = `WantToLearn-${runId}`;
 
         await test.step("Добавляем навык «могу помочь»", async () => {
             await profilePage.addSkill(canHelpTag, "can_help");
+        });
 
+        await test.step("Навык «могу помочь» появился в блоке", async () => {
             await expect(profilePage.canHelpSkills).toContainText(canHelpTag);
         });
 
@@ -243,20 +156,7 @@ test.describe("Профиль: действия с полями и навыка�
         });
     });
 
-    test("форма профиля: имя, telegram и био сохраняются за один раз", async ({ browser }) => {
-        const context = await browser.newContext();
-        contexts.push(context);
-
-        const user = makeUser("hw16", Date.now());
-        await registerUserViaApi(context.request, user);
-
-        const page = await context.newPage();
-        const profilePage = new ProfilePage(page);
-
-        await test.step("Открываем профиль участника", async () => {
-            await profilePage.open();
-        });
-
+    test("форма профиля: имя, telegram и био сохраняются за один раз", async () => {
         const runId = Date.now();
         const name = `Тимур Тестовый ${runId}`;
         const telegram = `@qa_timur_${runId}`;

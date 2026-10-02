@@ -8,8 +8,8 @@ import {
   makeUser,
   registerUserViaApi,
 } from "../helpers/user";
+import { createHostWithSkillAndSlot } from "../helpers/arrange";
 import { BookingPage } from "../pages/booking-page";
-import { ProfilePage } from "../pages/profile-page";
 
 test.describe("Бронирование: гонка за слот", () => {
   const contexts: BrowserContext[] = [];
@@ -26,12 +26,8 @@ test.describe("Бронирование: гонка за слот", () => {
 
     const runId = Date.now();
     const skillTag = `Playwright-booking-${runId}`;
-    const host = makeUser("host", runId);
     const guest = makeUser("guest", runId);
     const guest2 = makeUser("guest2", runId);
-
-    const hostContext = await browser.newContext();
-    contexts.push(hostContext);
 
     const guestContext = await browser.newContext();
     contexts.push(guestContext);
@@ -39,46 +35,26 @@ test.describe("Бронирование: гонка за слот", () => {
     const guest2Context = await browser.newContext();
     contexts.push(guest2Context);
 
-    const hostPage = await hostContext.newPage();
     const guestPage = await guestContext.newPage();
     const guest2Page = await guest2Context.newPage();
 
-    const hostProfilePage = new ProfilePage(hostPage);
-    const hostBookingPage = new BookingPage(hostPage);
     const guestBookingPage = new BookingPage(guestPage);
     const guest2BookingPage = new BookingPage(guest2Page);
 
-    await test.step("Хост: регистрируется через API", async () => {
-      await registerUserViaApi(hostContext.request, host);
-    });
-
-    await test.step("Хост: добавляет навык", async () => {
-      await hostProfilePage.open();
-      await hostProfilePage.addCanHelpSkill(skillTag);
-    });
-
-    await test.step("Хост: видит добавленный навык", async () => {
-      await expect(hostProfilePage.canHelpSkills).toContainText(skillTag);
-    });
-
-    await test.step("Хост: добавляет свободный слот на завтра", async () => {
-      await hostBookingPage.goToSlots();
-
-      const tomorrow = new Date(Date.now() + 24 * 60 * 60 * 1000);
-      const date = tomorrow.toISOString().slice(0, 10);
-
-      await hostBookingPage.addSlot(date, "12:00");
-    });
-
-    await test.step("Хост: видит добавленный слот", async () => {
-      await expect(hostBookingPage.slotCard("12:00")).toBeVisible({
-        timeout: 10_000,
-      });
-    });
+    const host = await test.step("Хост: готовим профиль с навыком и свободным слотом на завтра", () =>
+      createHostWithSkillAndSlot(browser, contexts, {
+        role: "host",
+        skillTag,
+        slotTime: "12:00",
+      }),
+    );
 
     await test.step("Гость: регистрируется через API", async () => {
       await registerUserViaApi(guestContext.request, guest);
-      await guestPage.goto("/pomidorqa");
+    });
+
+    await test.step("Гость: открывает каталог", async () => {
+      await guestBookingPage.openCatalog();
     });
 
     await test.step("Гость: ищет хоста по навыку", async () => {
@@ -86,17 +62,17 @@ test.describe("Бронирование: гонка за слот", () => {
     });
 
     await test.step("Гость: видит карточку хоста в каталоге", async () => {
-      await expect(guestBookingPage.personCard(host.name)).toBeVisible({
+      await expect(guestBookingPage.personCard(host.host.name)).toBeVisible({
         timeout: 10_000,
       });
     });
 
     await test.step("Гость: открывает карточку хоста", async () => {
-      await guestBookingPage.openPersonCard(host.name);
+      await guestBookingPage.openPersonCard(host.host.name);
     });
 
     await test.step("Гость: видит имя хоста", async () => {
-      await expect(guestBookingPage.personName).toHaveText(host.name);
+      await expect(guestBookingPage.personName).toHaveText(host.host.name);
     });
 
     await test.step("Гость: выбирает свободный слот", async () => {
@@ -111,7 +87,10 @@ test.describe("Бронирование: гонка за слот", () => {
 
     await test.step("Гость2: регистрируется через API", async () => {
       await registerUserViaApi(guest2Context.request, guest2);
-      await guest2Page.goto("/pomidorqa");
+    });
+
+    await test.step("Гость2: открывает каталог", async () => {
+      await guest2BookingPage.openCatalog();
     });
 
     await test.step("Гость2: ищет хоста по навыку", async () => {
@@ -119,17 +98,17 @@ test.describe("Бронирование: гонка за слот", () => {
     });
 
     await test.step("Гость2: видит карточку хоста в каталоге", async () => {
-      await expect(guest2BookingPage.personCard(host.name)).toBeVisible({
+      await expect(guest2BookingPage.personCard(host.host.name)).toBeVisible({
         timeout: 10_000,
       });
     });
 
     await test.step("Гость2: открывает карточку хоста", async () => {
-      await guest2BookingPage.openPersonCard(host.name);
+      await guest2BookingPage.openPersonCard(host.host.name);
     });
 
     await test.step("Гость2: видит имя хоста", async () => {
-      await expect(guest2BookingPage.personName).toHaveText(host.name);
+      await expect(guest2BookingPage.personName).toHaveText(host.host.name);
     });
 
     await test.step("Гость2: выбирает тот же свободный слот", async () => {
@@ -167,17 +146,17 @@ test.describe("Бронирование: гонка за слот", () => {
     });
 
     await test.step("Гость: видит будущую встречу с хостом", async () => {
-      await expect(guestBookingPage.bookingCardName()).toHaveText(host.name, {
+      await expect(guestBookingPage.bookingCardName()).toHaveText(host.host.name, {
         timeout: 10_000,
       });
     });
 
     await test.step("Хост: открывает «Мои встречи»", async () => {
-      await hostBookingPage.openBookings();
+      await host.hostBooking.openBookings();
     });
 
     await test.step("Хост: видит будущую встречу с гостем", async () => {
-      await expect(hostBookingPage.bookingCardName()).toHaveText(guest.name, {
+      await expect(host.hostBooking.bookingCardName()).toHaveText(guest.name, {
         timeout: 10_000,
       });
     });

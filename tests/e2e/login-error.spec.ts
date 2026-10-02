@@ -1,45 +1,50 @@
-import { test, expect } from "@playwright/test";
+import { expect, test } from "@playwright/test";
+import { deleteUserViaApi, makeUser, registerUserViaApi } from "../helpers/user";
+import { LoginPage } from "../pages/login-page";
 
-test("вход с неверными данными — одинаковая ошибка в обоих случаях, без уточнения причины", async ({
-  page,
-}) => {
-  const runId = Date.now();
-  const email = `login-check-${runId}@example.com`;
-  const password = "correct-password-123";
+test.describe("Вход: сообщения об ошибках", () => {
+    test("неверный пароль и несуществующий email дают одинаковую ошибку без уточнения причины", async ({
+        page,
+        request,
+    }) => {
+        const user = makeUser("login-check", Date.now());
+        const loginPage = new LoginPage(page);
 
-  await test.step("Заводим реальный аккаунт для проверки", async () => {
-    await page.goto("/pomidorqa/auth/register");
-    await page.getByLabel("Имя").fill("Login Error Check");
-    await page.getByLabel("Email").fill(email);
-    await page.getByLabel("Пароль").fill(password);
-    await page.getByRole("button", { name: "Зарегистрироваться" }).click();
-    await expect(page).toHaveURL(/\/pomidorqa\/?$/);
-  });
+        await test.step("Создаём аккаунт через API", async () => {
+            await registerUserViaApi(request, user);
+        });
 
-  let wrongPasswordError = "";
-  await test.step("Пробуем войти с верным email, но неверным паролем", async () => {
-    await page.goto("/pomidorqa/auth/login");
-    await page.getByLabel("Email").fill(email);
-    await page.getByLabel("Пароль").fill("wrong-password");
-    await page.getByRole("button", { name: "Войти" }).click();
-    const error = page.getByText(/Неверный/);
-    await expect(error).toBeVisible();
-    wrongPasswordError = (await error.textContent())?.trim() ?? "";
-  });
+        try {
+            let wrongPasswordError = "";
+            await test.step("Входим с верным email, но неверным паролем", async () => {
+                await loginPage.open();
+                await loginPage.login(user.email, "wrong-password");
+            });
 
-  let unknownEmailError = "";
-  await test.step("Пробуем войти с несуществующим email", async () => {
-    await page.goto("/pomidorqa/auth/login");
-    await page.getByLabel("Email").fill(`no-such-user-${runId}@example.com`);
-    await page.getByLabel("Пароль").fill("any-password-123");
-    await page.getByRole("button", { name: "Войти" }).click();
-    const error = page.getByText(/Неверный/);
-    await expect(error).toBeVisible();
-    unknownEmailError = (await error.textContent())?.trim() ?? "";
-  });
+            await test.step("Появилась ошибка входа", async () => {
+                const error = loginPage.errorMessage();
+                await expect(error).toBeVisible();
+                wrongPasswordError = (await error.textContent())?.trim() ?? "";
+            });
 
-  await test.step("Проверяем: текст ошибки одинаковый в обоих случаях — не раскрывает, что именно неверно", async () => {
-    expect(wrongPasswordError).toBe(unknownEmailError);
-    expect(wrongPasswordError).toContain("Неверный");
-  });
+            let unknownEmailError = "";
+            await test.step("Входим с несуществующим email", async () => {
+                await loginPage.open();
+                await loginPage.login(`no-such-${user.email}`, user.password);
+            });
+
+            await test.step("Ошибка входа та же, что для неверного пароля", async () => {
+                const error = loginPage.errorMessage();
+                await expect(error).toBeVisible();
+                unknownEmailError = (await error.textContent())?.trim() ?? "";
+            });
+
+            await test.step("Текст ошибки одинаковый в обоих случаях — не раскрывает, что именно неверно", async () => {
+                expect(wrongPasswordError).toBe(unknownEmailError);
+                expect(wrongPasswordError).toContain("Неверный");
+            });
+        } finally {
+            await deleteUserViaApi(request);
+        }
+    });
 });
