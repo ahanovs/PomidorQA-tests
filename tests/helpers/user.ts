@@ -4,9 +4,12 @@ import {
 } from "@playwright/test";
 
 export const ROUTES = {
+  catalog: "/pomidorqa",
   profile: "/pomidorqa/profile",
   slots: "/pomidorqa/profile/slots",
   bookings: "/pomidorqa/bookings",
+  login: "/pomidorqa/auth/login",
+  register: "/pomidorqa/auth/register",
 } as const;
 
 export type TestUser = {
