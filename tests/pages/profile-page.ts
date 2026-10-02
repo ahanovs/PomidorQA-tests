@@ -27,8 +27,8 @@ export class ProfilePage {
             name: "Сохранить",
         });
 
-        this.skillInput = page.locator("#pomidorqa-profile-skill-input");
-        this.skillTypeSelect = page.locator("#pomidorqa-profile-skill-type");
+        this.skillInput = page.getByLabel("Навык");
+        this.skillTypeSelect = page.getByLabel("Тип");
         this.addSkillButton = page.getByRole("button", {
             name: "Добавить",
         });
@@ -84,22 +84,6 @@ export class ProfilePage {
         await this.profileTelegramInput.fill(telegram);
         await this.profileBioInput.fill(bio);
         await this.saveProfile();
-    }
-
-    async fillName(name: string): Promise<void> {
-        await this.profileNameInput.fill(name);
-    }
-
-    async fillTelegram(telegram: string): Promise<void> {
-        await this.profileTelegramInput.fill(telegram);
-    }
-
-    async selectTimezone(timezone: string): Promise<void> {
-        await this.profileTimezoneSelect.selectOption(timezone);
-    }
-
-    async fillBio(bio: string): Promise<void> {
-        await this.profileBioInput.fill(bio);
     }
 
     async addSkill(

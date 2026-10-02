@@ -1,4 +1,4 @@
-import { expect, type Locator, type Page } from "@playwright/test";
+import { type Locator, type Page } from "@playwright/test";
 import { ROUTES } from "../helpers/user";
 
 export class BookingPage {
@@ -35,16 +35,14 @@ export class BookingPage {
     constructor(page: Page) {
         this.page = page;
 
-        this.slotsDateInput = page.locator("#pomidorqa-slots-date");
-        this.slotsTimeInput = page.locator("#pomidorqa-slots-time");
+        this.slotsDateInput = page.getByLabel("Дата");
+        this.slotsTimeInput = page.getByLabel("Время");
         this.slotsAddSubmit = page.getByRole("button", {
             name: "Добавить слот",
         });
         this.slotsCards = page.locator("[data-slot-id]");
 
-        this.catalogFilterInput = page.locator(
-            "#pomidorqa-catalog-skill-filter",
-        );
+        this.catalogFilterInput = page.getByLabel("Навык");
         this.catalogFilterSubmit = page.getByRole("button", {
             name: "Найти",
         });
@@ -107,7 +105,7 @@ export class BookingPage {
     }
 
     async openCatalog(): Promise<void> {
-        await this.page.goto("/pomidorqa");
+        await this.page.goto(ROUTES.catalog);
     }
 
     async openBookings(): Promise<void> {
@@ -125,9 +123,11 @@ export class BookingPage {
     }
 
     async deleteSlot(time: string): Promise<void> {
-        await this.slotCard(time)
-            .getByRole("button", { name: "Удалить" })
-            .click();
+        await this.deleteButton(time).click();
+    }
+
+    deleteButton(time: string): Locator {
+        return this.slotCard(time).getByRole("button", { name: "Удалить" });
     }
 
     personCard(name: string): Locator {
@@ -151,22 +151,13 @@ export class BookingPage {
         return this.bookingCalendarTimes.first();
     }
 
+    calendarTimeChipAt(time: string): Locator {
+        return this.bookingCalendarTimes.filter({ hasText: time });
+    }
+
     async selectFirstSlot(): Promise<void> {
         await this.calendarDayChip().click();
-
-        const firstTime = this.calendarTimeChip();
-
-        await expect(firstTime).toBeVisible({
-            timeout: 15_000,
-        });
-
-        await expect(firstTime).toBeEnabled();
-
-        await firstTime.click();
-
-        await expect(this.bookingConfirmDialog).toBeVisible({
-            timeout: 15_000,
-        });
+        await this.calendarTimeChip().click();
     }
 
     async selectSlotAt(time: string): Promise<void> {
@@ -176,17 +167,7 @@ export class BookingPage {
             hasText: time,
         });
 
-        await expect(timeChip).toBeVisible({
-            timeout: 15_000,
-        });
-
-        await expect(timeChip).toBeEnabled();
-
         await timeChip.click();
-
-        await expect(this.bookingConfirmDialog).toBeVisible({
-            timeout: 15_000,
-        });
     }
 
     async confirmBooking(): Promise<void> {
@@ -237,5 +218,9 @@ export class BookingPage {
             .getByText("Хочет разобрать", { exact: true })
             .locator("xpath=following-sibling::div[1]")
             .locator(`[data-skill-tag="${skillTag}"]`);
+    }
+
+    cancellationTooLateWarning(): Locator {
+        return this.page.getByText(/не позднее|2 час|нельзя отменить/i);
     }
 }
