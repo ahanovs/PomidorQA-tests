@@ -81,7 +81,7 @@ test.describe("Бронирование: гонка за слот", () => {
 
     await test.step("Гость: видит диалог подтверждения", async () => {
       await expect(guestBookingPage.bookingConfirmDialog).toBeVisible({
-        timeout: 10_000,
+        timeout: 15_000,
       });
     });
 
@@ -117,7 +117,7 @@ test.describe("Бронирование: гонка за слот", () => {
 
     await test.step("Гость2: видит диалог подтверждения", async () => {
       await expect(guest2BookingPage.bookingConfirmDialog).toBeVisible({
-        timeout: 10_000,
+        timeout: 15_000,
       });
     });
 

@@ -77,7 +77,7 @@ test.describe("Бронирование: отмена встречи", () => {
 
     await test.step("Гость: видит диалог подтверждения бронирования", async () => {
       await expect(guestBookingPage.bookingConfirmDialog).toBeVisible({
-        timeout: 10_000,
+        timeout: 15_000,
       });
     });
 

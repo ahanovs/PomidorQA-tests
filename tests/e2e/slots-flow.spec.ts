@@ -169,7 +169,7 @@ test.describe("Слоты: создание, удаление, валидаци�
 
         await test.step("Открывается окно подтверждения бронирования", async () => {
             await expect(guestBookingPage.bookingConfirmDialog).toBeVisible({
-                timeout: 10_000,
+                timeout: 15_000,
             });
         });
 

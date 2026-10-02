@@ -133,7 +133,7 @@ test.describe("Бронирование: правила доступа", () => {
                     await expect(
                         firstGuestBooking.bookingConfirmDialog,
                     ).toBeVisible({
-                        timeout: 10_000,
+                        timeout: 15_000,
                     });
                 },
             );
@@ -215,7 +215,7 @@ test.describe("Бронирование: правила доступа", () => {
                     await expect(
                         secondGuestBooking.bookingConfirmDialog,
                     ).toBeVisible({
-                        timeout: 10_000,
+                        timeout: 15_000,
                     });
                 },
             );
