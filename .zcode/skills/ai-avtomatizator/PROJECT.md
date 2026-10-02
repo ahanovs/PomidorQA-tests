@@ -6,6 +6,10 @@
 - `playwright.config.ts` — проекты `unit`, `api`, `e2e`, base URL и артефакты.
 - `eslint.config.mjs` — обязательные Playwright ESLint-правила.
 - `package.json` — команды тестов и линтера.
+- `.zcode/` — скилл `ai-avtomatizator` (`SKILL.md`, этот файл) и скрипт
+  `hooks/pre-push-check.mjs` — гейт перед пушем (линт + быстрые тесты).
+  Регистрация хука — в личном конфиге клиента (`~/.zcode/cli/config.json`),
+  потому что workspace-хуки ZCode требуют ревью на каждую сессию.
 
 ## Тестовые слои
 
