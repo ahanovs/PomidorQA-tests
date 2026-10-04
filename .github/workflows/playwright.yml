@@ -1,4 +1,6 @@
 # Имя workflow — так он отображается во вкладке Actions.
+# ВАЖНО: на это имя подписан AI-ревьюер (.github/workflows/ai-review.yml через
+# workflow_run), поэтому переименовывать workflow нельзя.
 name: Playwright CI
 
 # События, которые запускают проверки.
@@ -12,70 +14,254 @@ on:
   # Оставляем кнопку ручного запуска во вкладке Actions.
   workflow_dispatch:
 
+# Новый пуш в ту же ветку отменяет ещё не закончившийся старый прогон:
+# результат устаревшего коммита никому не нужен, а минуты runner'а экономятся.
+concurrency:
+  group: playwright-ci-${{ github.ref }}
+  cancel-in-progress: true
+
 # Все работы, которые выполнит workflow.
+# Pipeline собран по принципу «от дешёвого к дорогому»: статика и быстрые тесты
+# идут первыми, а самый дорогой E2E против живого стенда стартует только после
+# их зелёного результата.
 jobs:
-  # Технический идентификатор единственной работы.
-  test:
-    # Читаемое имя работы в интерфейсе GitHub.
-    name: Lint and Playwright tests
-    # Останавливаем зависший прогон через 30 минут.
-    timeout-minutes: 30
-    # Запускаем проверки на чистой Linux-машине GitHub.
+  # 1. Quality — статический анализ кода: линтер и проверка типов.
+  # Браузер здесь не нужен, поэтому джоба собирается быстрее остальных.
+  quality:
+    name: Quality (ESLint + TypeScript)
+    # Статика не должна висеть: 10 минут с запасом.
+    timeout-minutes: 10
+    # Запускаем на чистой Linux-машине GitHub.
     runs-on: ubuntu-latest
 
-    # Шаги выполняются сверху вниз в одной и той же машине.
     steps:
-      # Сначала загружаем в runner код из текущего PR.
+      # Загружаем в runner код текущего PR или ветки.
       - name: Checkout repository
-        # Официальный action GitHub для клонирования репозитория.
         uses: actions/checkout@v6
 
       # Готовим версию Node.js, на которой работает проект.
       - name: Setup Node.js
-        # Официальный action устанавливает Node.js и настраивает npm.
         uses: actions/setup-node@v6
-        # Параметры для action `setup-node`.
         with:
           # Node.js 24 поддерживается текущими версиями ESLint и Playwright.
           node-version: 24
           # Кэшируем скачанные npm-пакеты, но не готовый `node_modules`.
           cache: npm
 
-      # Устанавливаем JavaScript-зависимости проекта.
+      # `npm ci` ставит точные версии из lock-файла и проверяет его согласованность с package.json.
       - name: Install npm dependencies
-        # `npm ci` ставит точные версии из lock-файла и проверяет его согласованность с package.json.
         run: npm ci
 
-      # Playwright-пакет и браузерный бинарник устанавливаются отдельно.
-      - name: Install Chromium and system dependencies
-        # Для учебного CI достаточно Chromium; `--with-deps` добавляет нужные библиотеки Linux.
-        run: npx playwright install --with-deps chromium
-
-      # Сначала запускаем быструю статическую проверку кода.
+      # Тот же npm-скрипт, который разработчик запускает локально перед пушем.
       - name: Lint tests
-        # Используем тот же npm-скрипт, который разработчик запускает локально.
         run: npm run lint
 
-      # После линтера проверяем реальное поведение тестами.
-      - name: Run Playwright tests
-        # Скрипт `test` из package.json запускает unit, API и E2E-проекты Playwright.
-        run: npm test
-        # Переменные окружения только для этого шага.
+      # `tsc --noEmit` проверяет типы во всём проекте и ничего не собирает на диск.
+      - name: Typecheck
+        run: npm run typecheck
+
+  # 2. Unit — чистая логика без браузера и без сети.
+  unit:
+    name: Unit tests
+    timeout-minutes: 10
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install npm dependencies
+        run: npm ci
+
+      # Playwright-проект `unit` исполняет чистый TypeScript — бинарник браузера не нужен.
+      - name: Run unit tests
+        run: npm run test:unit
         env:
-          # Включает CI-режим в playwright.config.ts: retry, один worker и reporter без открытия окна.
+          # Включает CI-режим в playwright.config.ts: retry и reporter без открытия окна.
           CI: true
 
-      # Сохраняем HTML-отчёт после завершения тестов.
+  # 3. API — HTTP-тесты против локального мок-сервера; браузер не нужен.
+  api:
+    name: API tests
+    timeout-minutes: 10
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install npm dependencies
+        run: npm ci
+
+      # Мок-сервер стартует внутри самого спека (beforeAll), отдельных шагов не требуется.
+      - name: Run API tests
+        run: npm run test:api
+        env:
+          CI: true
+
+  # 4. E2E — самая дорогая проверка: живой общий стенд aiqa.su и браузер.
+  # Гейт `needs` не даст ей стартовать, если статика или быстрые тесты упали.
+  e2e:
+    name: E2E (Chromium)
+    needs: [quality, unit, api]
+    # Останавливаем зависший прогон через 30 минут.
+    timeout-minutes: 30
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install npm dependencies
+        run: npm ci
+
+      # Кэшируем бинарники браузеров между запусками: Chromium весит больше сотни мегабайт.
+      # Ключ привязан к lock-файлу — обновили Playwright, кэш пересоберётся.
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: ms-playwright-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+
+      # `--with-deps` добавляет нужные Chromium'у системные библиотеки Linux.
+      - name: Install Chromium and system dependencies
+        run: npx playwright install --with-deps chromium
+
+      - name: Run E2E tests
+        run: npm run test:e2e
+        env:
+          # CI-режим: один worker и retry — общий стенд не любит параллельных пользователей.
+          CI: true
+
+      # Сохраняем HTML-отчёт после завершения тестов — и после успеха, и после падения.
       - name: Upload Playwright report
-        # Загружаем отчёт и после успеха, и после падения; пропускаем только отменённый run.
         if: ${{ !cancelled() }}
-        # Официальный action GitHub превращает каталог в artifact текущего run.
         uses: actions/upload-artifact@v7
-        # Параметры сохраняемого artifact.
         with:
           # Уникальный run_id не даёт отчётам разных запусков конфликтовать по имени.
           name: playwright-report-${{ github.run_id }}
-          # Стандартный каталог, куда HTML reporter Playwright пишет отчёт.
           path: playwright-report/
           # Двух недель достаточно для разбора PR, старые учебные отчёты не храним бессрочно.
           retention-days: 14
+
+      # Трейсы, скриншоты и видео падений: конфиг уже создаёт их в test-results/,
+      # здесь мы наконец забираем их из runner'а для разбора без локального повтора.
+      - name: Upload traces, screenshots and videos
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: e2e-artifacts-${{ github.run_id }}
+          path: test-results/
+          retention-days: 14
+          # На полностью зелёном прогоне каталог пуст — это не ошибка загрузки.
+          if-no-files-found: ignore
+
+  # 5. Summary & Notify — итоговая страница запуска и Telegram-уведомление.
+  # Собирает статусы всех проверок, даже когда что-то упало или не стартовало.
+  summary:
+    name: Summary & Notify
+    needs: [quality, unit, api, e2e]
+    # `always()` — джоба получает слово и после падения, и после отмены соседей.
+    if: ${{ always() }}
+    timeout-minutes: 5
+    runs-on: ubuntu-latest
+
+    env:
+      # Секреты пробрасываются на уровне job, чтобы шаг мог проверить их наличие
+      # и тихо пропуститься, пока Telegram-бот не подключён.
+      TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+      TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+
+    steps:
+      - name: Write job summary
+        # Всё, что скрипт напишет в $GITHUB_STEP_SUMMARY, GitHub покажет
+        # на вкладке Summary у этого запуска.
+        run: |
+          run_url="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+
+          status_emoji() {
+            case "$1" in
+              success)   echo "✅" ;;
+              failure)   echo "❌" ;;
+              cancelled) echo "🚫" ;;
+              skipped)   echo "⏭" ;;
+              *)         echo "❔" ;;
+            esac
+          }
+
+          {
+            echo "## 🍅 PomidorQA CI Summary"
+            echo ""
+            echo "| Проверка | Статус |"
+            echo "| --- | --- |"
+            echo "| Quality (ESLint + TypeScript) | $(status_emoji '${{ needs.quality.result }}') \`${{ needs.quality.result }}\` |"
+            echo "| Unit tests | $(status_emoji '${{ needs.unit.result }}') \`${{ needs.unit.result }}\` |"
+            echo "| API tests | $(status_emoji '${{ needs.api.result }}') \`${{ needs.api.result }}\` |"
+            echo "| E2E (Chromium) | $(status_emoji '${{ needs.e2e.result }}') \`${{ needs.e2e.result }}\` |"
+            echo ""
+            echo "| | |"
+            echo "| --- | --- |"
+            echo "| 🌿 Ветка | \`${{ github.ref_name }}\` |"
+            echo "| 📦 Коммит | [\`${GITHUB_SHA::7}\`](${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}) |"
+            echo "| 👤 Автор | ${{ github.actor }} |"
+            echo "| ⚡ Событие | \`${{ github.event_name }}\` |"
+            echo ""
+            echo "▶️ [Полный лог запуска]($run_url)"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Send Telegram notification
+        # Пока секреты не заданы, шаг просто пропускается — CI от этого не краснеет.
+        if: ${{ env.TELEGRAM_BOT_TOKEN != '' && env.TELEGRAM_CHAT_ID != '' }}
+        run: |
+          run_url="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+
+          status_emoji() {
+            case "$1" in
+              success)   echo "✅" ;;
+              failure)   echo "❌" ;;
+              cancelled) echo "🚫" ;;
+              skipped)   echo "⏭" ;;
+              *)         echo "❔" ;;
+            esac
+          }
+
+          text="🍅 PomidorQA CI — $( [ '${{ needs.quality.result }}' = 'success' ] && [ '${{ needs.unit.result }}' = 'success' ] && [ '${{ needs.api.result }}' = 'success' ] && [ '${{ needs.e2e.result }}' = 'success' ] && echo 'всё зелёное ✅' || echo 'есть проблемы ❌' )
+          🌿 Ветка: ${{ github.ref_name }}
+          📦 Коммит: ${GITHUB_SHA::7}
+          👤 Автор: ${{ github.actor }}
+
+          $(status_emoji '${{ needs.quality.result }}') Quality (ESLint + TypeScript)
+          $(status_emoji '${{ needs.unit.result }}') Unit tests
+          $(status_emoji '${{ needs.api.result }}') API tests
+          $(status_emoji '${{ needs.e2e.result }}') E2E (Chromium)"
+
+          # jq собирает корректный JSON: значения подставляются как экранированные строки.
+          payload="$(jq -n \
+            --arg chat_id "$TELEGRAM_CHAT_ID" \
+            --arg text "$text" \
+            --arg url "$run_url" \
+            '{chat_id: $chat_id, text: $text, disable_web_page_preview: true,
+              reply_markup: {inline_keyboard: [[{text: "Открыть запуск", url: $url}]]}}')"
+
+          # `-f` превращает HTTP-ошибку Telegram в падение шага.
+          curl -sf -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+            -H "Content-Type: application/json" \
+            -d "$payload"
