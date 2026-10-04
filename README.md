@@ -1,5 +1,7 @@
 # PomidorQA Course Tests
 
+[![CI](https://github.com/ahanovs/PomidorQA-tests/actions/workflows/playwright.yml/badge.svg)](https://github.com/ahanovs/PomidorQA-tests/actions/workflows/playwright.yml)
+
 Репозиторий автотестов для [PomidorQA](https://aiqa.su/pomidorqa) — сервиса коротких встреч для QA- и IT-специалистов.
 
 Проект написан на TypeScript и Playwright. В репозитории собраны unit-, API- и E2E-тесты. GitHub Actions гоняет pipeline из пяти джоб (Quality → Unit / API → E2E) при каждом push и pull request, ведёт Summary-страницу запуска и отправляет Telegram-уведомления; отдельный Stability Check охотится на флейки.
