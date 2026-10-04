@@ -1,0 +1,94 @@
+# Отдельный стенд для охоты на флейки: те же E2E-тесты, но в жёстком режиме.
+# Обычный CI прощает первый падения retry'ем, а здесь задача наоборот —
+# поймать нестабильный тест и не дать ему спрятаться.
+name: Stability Check
+
+on:
+  # Кнопка «Run workflow» во вкладке Actions — запуск вручную в любой момент.
+  workflow_dispatch:
+  # Плановая проверка: каждый понедельник в 06:00 UTC (09:00 МСК).
+  # Расписание исполняется только для workflow на ветке по умолчанию.
+  schedule:
+    - cron: "0 6 * * 1"
+
+# Новый запуск отменяет ещё не закончившийся предыдущий.
+concurrency:
+  group: stability-check-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  stability:
+    name: E2E stability (3 повтора, без retry)
+    # Тройной прогон всех E2E-тестов против общего стенда требует времени.
+    timeout-minutes: 60
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install npm dependencies
+        run: npm ci
+
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: ms-playwright-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+
+      - name: Install Chromium and system dependencies
+        run: npx playwright install --with-deps chromium
+
+      # Ключевая пара флагов:
+      # `--repeat-each=3` — каждый тест прогоняется трижды;
+      # `--retries=0` — запрещаем автоповтор из playwright.config.ts (в CI там retry 1).
+      # Тест, упавший хотя бы в одном из трёх прогонов, валит весь workflow —
+      # так нестабильность невозможно скрыть за retry.
+      - name: Run E2E three times without retries
+        id: e2e
+        run: npx playwright test --project=e2e --repeat-each=3 --retries=0
+        env:
+          CI: true
+
+      - name: Write stability summary
+        if: ${{ !cancelled() }}
+        run: |
+          {
+            echo "## 🧪 Stability Check"
+            echo ""
+            echo "| | |"
+            echo "| --- | --- |"
+            echo "| 🌿 Ветка | \`${{ github.ref_name }}\` |"
+            echo "| 📦 Коммит | [\`${GITHUB_SHA::7}\`](${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}) |"
+            echo "| 🔁 Режим | каждый E2E-тест × 3, без retry |"
+            echo ""
+            if [ "${{ steps.e2e.conclusion }}" = "success" ]; then
+              echo "✅ Все E2E-тесты прошли трижды подряд — флейков не найдено."
+            else
+              echo "❌ Найден нестабильный тест: упал хотя бы в одном из трёх прогонов."
+              echo "По правилам CODEX свой флак чинит автор. Разбор — в HTML-отчёте и трейсах из артефактов ниже."
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload Playwright report
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: stability-report-${{ github.run_id }}
+          path: playwright-report/
+          retention-days: 14
+
+      - name: Upload traces, screenshots and videos
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: stability-artifacts-${{ github.run_id }}
+          path: test-results/
+          retention-days: 14
+          if-no-files-found: ignore
