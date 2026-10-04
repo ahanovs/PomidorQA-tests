@@ -92,3 +92,20 @@ git push origin hw5-<ваш-github-username>
 ## Именование коммитов (по умолчанию, ужесточается на Уроке 16)
 
 `hw<N>: короткое описание на русском` — например `hw5: guest2 через registerUser`.
+
+## Проверки CI на PR
+
+Каждый PR и push в `main` запускают pipeline **Playwright CI** из пяти джоб — от дешёвых к дорогим:
+
+1. `Quality (ESLint + TypeScript)` — линтер и проверка типов;
+2. `Unit tests` и `API tests` — параллельно, без браузера;
+3. `E2E (Chromium)` — стартует только после зелёных предыдущих;
+4. `Summary & Notify` — итоговая страница и Telegram-уведомление.
+
+Итог виден на вкладке **Summary** запуска; HTML-отчёт и трейсы падений — в артефактах запуска.
+
+Ветка `main` защищена required checks — мерж возможен, только когда зелёные:
+`Quality (ESLint + TypeScript)`, `Unit tests`, `API tests`, `E2E (Chromium)`.
+
+Раз в неделю (и по кнопке Run workflow) стартует **Stability Check**: каждый E2E-тест × 3 без
+ретраев. Красный Stability Check означает найденный флак — по правилам CODEX его чинит автор.
