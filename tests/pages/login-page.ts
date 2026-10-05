@@ -26,6 +26,10 @@ export class LoginPage {
         await this.submitButton.click();
     }
 
+    async logout(): Promise<void> {
+        await this.page.getByRole("button", { name: "Выйти" }).click();
+    }
+
     errorMessage(): Locator {
         return this.page.getByText(/Неверный/);
     }
