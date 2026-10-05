@@ -188,4 +188,52 @@ test.describe("Профиль: действия с полями и навыка�
             await expect.soft(profilePage.profileBioInput).toHaveValue(bio);
         });
     });
+
+    test("пустое имя не сохраняется — сервер оставляет прежнее", async () => {
+        const currentName = await profilePage.profileNameInput.inputValue();
+
+        await test.step("Очищаем имя и нажимаем «Сохранить»", async () => {
+            await profilePage.attemptSaveWithEmptyName();
+        });
+
+        await test.step("После перезагрузки на сервере по-прежнему прежнее имя", async () => {
+            await page.reload();
+
+            await expect(profilePage.profileNameInput).toHaveValue(currentName);
+        });
+    });
+
+    test("telegram и «о себе» необязательны — профиль сохраняется без них", async () => {
+        const nameOnly = `БезTelegram ${Date.now()}`;
+
+        await test.step("Заполняем только имя, Telegram и «о себе» пустые", async () => {
+            await profilePage.changeNameAndSave(nameOnly);
+        });
+
+        await test.step("После перезагрузки имя сохранено, необязательные поля пустые", async () => {
+            await page.reload();
+
+            await expect(profilePage.profileNameInput).toHaveValue(nameOnly);
+            await expect(profilePage.profileTelegramInput).toHaveValue("");
+            await expect(profilePage.profileBioInput).toHaveValue("");
+        });
+    });
+
+    test("один и тот же навык под разными типами — две отдельные записи", async () => {
+        const tag = `Doubleskill-${Date.now()}`;
+
+        await test.step("Добавляем навык как «могу помочь»", async () => {
+            await profilePage.addCanHelpSkill(tag);
+
+            await expect(profilePage.skillChip(tag)).toHaveCount(1);
+        });
+
+        await test.step("Добавляем тот же навык как «хочу разобрать»", async () => {
+            await profilePage.addWantToLearnSkill(tag);
+        });
+
+        await test.step("Существуют обе записи — по одной на каждый тип", async () => {
+            await expect(profilePage.skillChip(tag)).toHaveCount(2);
+        });
+    });
 });
