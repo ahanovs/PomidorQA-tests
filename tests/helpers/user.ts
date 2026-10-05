@@ -12,6 +12,11 @@ export const ROUTES = {
   register: "/pomidorqa/auth/register",
 } as const;
 
+// Страница участника не имеет статического адреса: id задаётся в URL.
+export function personRoute(id: string): string {
+  return `${ROUTES.catalog}/people/${id}`;
+}
+
 export type TestUser = {
   name: string;
   email: string;

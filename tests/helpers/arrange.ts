@@ -10,6 +10,7 @@ import { ProfilePage } from "../pages/profile-page";
 
 export type HostWithSkillAndSlot = {
   host: ReturnType<typeof makeUser>;
+  hostId: string;
   hostPage: Page;
   hostProfile: ProfilePage;
   hostBooking: BookingPage;
@@ -24,6 +25,7 @@ export async function createHostWithSkillAndSlot(
   params: {
     role: string;
     skillTag: string;
+    skillType?: "can_help" | "want_to_learn";
     slotTime: string;
     slotDate?: string;
   },
@@ -37,9 +39,9 @@ export async function createHostWithSkillAndSlot(
   const hostProfile = new ProfilePage(hostPage);
   const hostBooking = new BookingPage(hostPage);
 
-  await registerUserViaApi(context.request, host);
+  const hostRegistered = await registerUserViaApi(context.request, host);
   await hostProfile.open();
-  await hostProfile.addCanHelpSkill(params.skillTag);
+  await hostProfile.addSkill(params.skillTag, params.skillType ?? "can_help");
   await hostProfile.skillChip(params.skillTag).waitFor({
     state: "visible",
     timeout: 10_000,
@@ -52,5 +54,5 @@ export async function createHostWithSkillAndSlot(
     timeout: 10_000,
   });
 
-  return { host, hostPage, hostProfile, hostBooking };
+  return { host, hostId: hostRegistered.id, hostPage, hostProfile, hostBooking };
 }

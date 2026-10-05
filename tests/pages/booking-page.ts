@@ -1,5 +1,5 @@
 import { type Locator, type Page } from "@playwright/test";
-import { ROUTES } from "../helpers/user";
+import { personRoute, ROUTES } from "../helpers/user";
 
 export class BookingPage {
     readonly page: Page;
@@ -110,6 +110,12 @@ export class BookingPage {
 
     async openBookings(): Promise<void> {
         await this.page.goto(ROUTES.bookings);
+    }
+
+    // Карточка участника из каталога исчезает после его брони (нет свободных
+    // слотов), поэтому для повторного открытия страницы нужен прямой адрес.
+    async openPerson(id: string): Promise<void> {
+        await this.page.goto(personRoute(id));
     }
 
     async addSlot(date: string, time: string): Promise<void> {
