@@ -199,6 +199,12 @@ export class BookingPage {
         await this.bookingConfirmButton.click();
     }
 
+    async cancelConfirmDialog(): Promise<void> {
+        await this.bookingConfirmDialog
+            .getByRole("button", { name: "Отмена" })
+            .click();
+    }
+
     bookingCardName(): Locator {
         return this.bookingsCards.first().locator("p").first();
     }

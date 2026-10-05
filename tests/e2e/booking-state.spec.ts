@@ -109,4 +109,108 @@ test.describe("Состояние после бронирования", () => {
             }
         },
     );
+
+    test(
+        "закрытие окна подтверждения не создаёт бронирование",
+        async ({ browser }) => {
+            test.setTimeout(60_000);
+
+            const contexts: BrowserContext[] = [];
+            const runId = Date.now();
+            const skillTag = `Close-${runId}`;
+            const slotTime = "12:00";
+            const guest = makeUser("guest-close", runId);
+
+            try {
+                const host = await test.step(
+                    "Хост: готовим профиль с навыком и свободным слотом",
+                    () =>
+                        createHostWithSkillAndSlot(browser, contexts, {
+                            role: "host-close",
+                            skillTag,
+                            slotTime,
+                        }),
+                );
+
+                const guestContext = await browser.newContext();
+                contexts.push(guestContext);
+                const guestBooking = new BookingPage(
+                    await guestContext.newPage(),
+                );
+
+                await test.step("Гость: регистрируется через API", async () => {
+                    await registerUserViaApi(guestContext.request, guest);
+                });
+
+                await test.step(
+                    "Гость ищет хоста по навыку и открывает его страницу",
+                    async () => {
+                        await guestBooking.openCatalog();
+                        await guestBooking.findPersonBySkill(skillTag);
+
+                        await expect(
+                            guestBooking.personCard(host.host.name),
+                        ).toBeVisible({
+                            timeout: 10_000,
+                        });
+
+                        await guestBooking.openPersonCard(host.host.name);
+                    },
+                );
+
+                await test.step(
+                    "Гость выбирает слот — открывается окно подтверждения",
+                    async () => {
+                        await guestBooking.selectSlotAt(slotTime);
+
+                        await expect(
+                            guestBooking.bookingConfirmDialog,
+                        ).toBeVisible({
+                            timeout: 15_000,
+                        });
+                    },
+                );
+
+                await test.step(
+                    "Гость закрывает окно кнопкой «Отмена»",
+                    async () => {
+                        await guestBooking.cancelConfirmDialog();
+
+                        await expect(
+                            guestBooking.bookingConfirmDialog,
+                        ).toBeHidden({
+                            timeout: 10_000,
+                        });
+                    },
+                );
+
+                await test.step(
+                    "Бронирования нет в «Моих встречах»",
+                    async () => {
+                        await guestBooking.openBookings();
+
+                        await expect(
+                            guestBooking.bookingsCards,
+                        ).toHaveCount(0);
+
+                        await expect(
+                            guestBooking.pastBookingsCards,
+                        ).toHaveCount(0);
+                    },
+                );
+
+                await test.step("Слот хоста остаётся свободным", async () => {
+                    await guestBooking.openPerson(host.hostId);
+
+                    await expect(
+                        guestBooking.calendarTimeChipAt(slotTime),
+                    ).toBeVisible({
+                        timeout: 10_000,
+                    });
+                });
+            } finally {
+                await cleanupUsersViaApi(contexts);
+            }
+        },
+    );
 });
