@@ -216,9 +216,15 @@ jobs:
     timeout-minutes: 5
     runs-on: ubuntu-latest
 
+    # Токен по умолчанию может не иметь прав на actions API — выдаём явно:
+    # contents нужен для checkout, actions — за run_duration_ms для Telegram.
+    permissions:
+      contents: read
+      actions: read
+
     env:
       # Секреты пробрасываются на уровне job, чтобы шаг мог проверить их наличие
-      # и тихо пропуститься, пока Telegram-бот не подключён.
+      # и тихо пропуститься, пока Telegram-бот не подключен.
       TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
       TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
 
@@ -313,10 +319,21 @@ jobs:
             esac
           }
 
+          # Общее время прогона — из GitHub API: от старта первой джобы до текущего шага.
+          # Если API недоступен, строка просто не попадёт в сообщение.
+          duration_line=""
+          run_ms="$(curl -sf -H "Authorization: Bearer ${{ github.token }}" \
+            "${{ github.api_url }}/repos/${{ github.repository }}/actions/runs/${{ github.run_id }}" \
+            | jq -r '.run_duration_ms // empty' || true)"
+          if [ -n "$run_ms" ] && [ "$run_ms" -gt 0 ] 2>/dev/null; then
+            duration_line="⏱ Прогон: $(( run_ms / 60000 )) мин $(( (run_ms % 60000) / 1000 )) с"
+          fi
+
           text="🍅 PomidorQA CI — $( [ '${{ needs.quality.result }}' = 'success' ] && [ '${{ needs.unit.result }}' = 'success' ] && [ '${{ needs.api.result }}' = 'success' ] && [ '${{ needs.e2e.result }}' = 'success' ] && echo 'всё зелёное ✅' || echo 'есть проблемы ❌' )
           🌿 Ветка: ${{ github.ref_name }}
           📦 Коммит: ${GITHUB_SHA::7}
           👤 Автор: ${{ github.actor }}
+          ${duration_line}
 
           $(status_emoji '${{ needs.quality.result }}') Quality (ESLint + TypeScript)
           $(status_emoji '${{ needs.unit.result }}') Unit tests
