@@ -44,8 +44,6 @@ export class ProfilePage {
         return this.page.locator(`[data-skill-tag="${tag}"]`);
     }
 
-    // Пустое имя продукт отклоняет молча: ни POST, ни ошибки в интерфейсе.
-    // Ждать сеть здесь нечего — итог читаем с сервера после перезагрузки.
     async attemptSaveWithEmptyName(): Promise<void> {
         await this.profileNameInput.fill("");
         await this.profileSaveButton.click();

@@ -39,8 +39,6 @@ export class RegisterPage {
         await this.registerButton.click();
     }
 
-    // Нативная валидация формы не имеет ARIA-представления: у невалидного
-    // поля нет роли и текста в снапшоте, его видно только через :invalid.
     invalidName(): Locator {
         return this.page.locator('input[name="name"]:invalid');
     }

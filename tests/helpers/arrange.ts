@@ -16,9 +16,6 @@ export type HostWithSkillAndSlot = {
   hostBooking: BookingPage;
 };
 
-// Arrange для сценариев «найти хоста по навыку и забронировать слот».
-// Context попадает в contexts до первого действия, которое может упасть, —
-// иначе cleanup после падения не сработает (кодекс 12).
 export async function createHostWithSkillAndSlot(
   browser: Browser,
   contexts: BrowserContext[],

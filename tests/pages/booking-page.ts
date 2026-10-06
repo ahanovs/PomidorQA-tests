@@ -112,8 +112,6 @@ export class BookingPage {
         await this.page.goto(ROUTES.bookings);
     }
 
-    // Карточка участника из каталога исчезает после его брони (нет свободных
-    // слотов), поэтому для повторного открытия страницы нужен прямой адрес.
     async openPerson(id: string): Promise<void> {
         await this.page.goto(personRoute(id));
     }
@@ -161,11 +159,6 @@ export class BookingPage {
         return this.bookingCalendarTimes.filter({ hasText: time });
     }
 
-    // Страница участника отрисована сервером: кнопки календаря видны из HTML,
-    // но это React — обработчики кликов прикрепляются только после гидратации.
-    // На медленном канале (CI-раннер далеко от стенда) бандл грузится секунды,
-    // и клик по «видимой, но ещё неживой» кнопке теряется. Ждём служебные
-    // ключи React на кнопке календаря — признак прикреплённых обработчиков.
     private async waitUntilCalendarInteractive(): Promise<void> {
         await this.page.waitForFunction(
             () => {
