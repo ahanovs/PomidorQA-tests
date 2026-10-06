@@ -86,6 +86,18 @@ jobs:
           # Включает CI-режим в playwright.config.ts: retry и reporter без открытия окна.
           CI: true
 
+      # JSON и JUnit уходят в артефакты: JSON скармливается metrics.mjs в Summary,
+      # JUnit — универсальный формат для внешних систем отчётности.
+      - name: Upload JSON and JUnit reports
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: unit-json-report-${{ github.run_id }}
+          path: |
+            test-results/report.json
+            test-results/junit.xml
+          retention-days: 14
+
   # 3. API — HTTP-тесты против локального мок-сервера; браузер не нужен.
   api:
     name: API tests
@@ -110,6 +122,16 @@ jobs:
         run: npm run test:api
         env:
           CI: true
+
+      - name: Upload JSON and JUnit reports
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: api-json-report-${{ github.run_id }}
+          path: |
+            test-results/report.json
+            test-results/junit.xml
+          retention-days: 14
 
   # 4. E2E — самая дорогая проверка: живой общий стенд aiqa.su и браузер.
   # Гейт `needs` не даст ей стартовать, если статика или быстрые тесты упали.
@@ -151,6 +173,16 @@ jobs:
           # CI-режим: один worker и retry — общий стенд не любит параллельных пользователей.
           CI: true
 
+      - name: Upload JSON and JUnit reports
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: e2e-json-report-${{ github.run_id }}
+          path: |
+            test-results/report.json
+            test-results/junit.xml
+          retention-days: 14
+
       # Сохраняем HTML-отчёт после завершения тестов — и после успеха, и после падения.
       - name: Upload Playwright report
         if: ${{ !cancelled() }}
@@ -191,6 +223,44 @@ jobs:
       TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
 
     steps:
+      # metrics.mjs — файл репозитория: без checkout шагу метрик нечего запускать.
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      # JSON-отчёты трёх джоб собираем в отдельные папки; если джоба не доехала,
+      # продолжаем с пометкой — metrics.mjs умеет жить без части отчётов.
+      - name: Download unit JSON report
+        if: ${{ always() }}
+        continue-on-error: true
+        uses: actions/download-artifact@v7
+        with:
+          name: unit-json-report-${{ github.run_id }}
+          path: metrics/unit
+
+      - name: Download API JSON report
+        if: ${{ always() }}
+        continue-on-error: true
+        uses: actions/download-artifact@v7
+        with:
+          name: api-json-report-${{ github.run_id }}
+          path: metrics/api
+
+      - name: Download E2E JSON report
+        if: ${{ always() }}
+        continue-on-error: true
+        uses: actions/download-artifact@v7
+        with:
+          name: e2e-json-report-${{ github.run_id }}
+          path: metrics/e2e
+
+      - name: Append run metrics to summary
+        if: ${{ always() }}
+        run: |
+          node scripts/metrics.mjs \
+            metrics/unit/report.json \
+            metrics/api/report.json \
+            metrics/e2e/report.json >> "$GITHUB_STEP_SUMMARY"
+
       - name: Write job summary
         # Всё, что скрипт напишет в $GITHUB_STEP_SUMMARY, GitHub покажет
         # на вкладке Summary у этого запуска.

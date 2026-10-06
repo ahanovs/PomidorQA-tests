@@ -1,4 +1,27 @@
-import { defineConfig, devices } from "@playwright/test";
+import {
+  defineConfig,
+  devices,
+  type ReporterDescription,
+} from "@playwright/test";
+
+// JSON-отчёт в CI идёт в артефакты и метрики Step Summary (scripts/metrics.mjs);
+// локально включается переменной PW_JSON_REPORT=путь — им же пользуется gate.
+const jsonReport =
+  process.env.PW_JSON_REPORT ??
+  (process.env.CI ? "test-results/report.json" : undefined);
+const junitReport = process.env.CI ? "test-results/junit.xml" : undefined;
+
+const reporters: ReporterDescription[] = [
+  ["list"],
+  // В CI пишем HTML-artifact, но не пытаемся открыть браузерное окно на headless-runner.
+  ["html", { open: process.env.CI ? "never" : "on-failure" }],
+];
+if (jsonReport) {
+  reporters.push(["json", { outputFile: jsonReport }]);
+}
+if (junitReport) {
+  reporters.push(["junit", { outputFile: junitReport }]);
+}
 
 export default defineConfig({
   timeout: 30_000,
@@ -7,8 +30,7 @@ export default defineConfig({
   retries: process.env.CI ? 1 : 0,
   // Один CI-worker снижает конкуренцию за пользователей, слоты и бронирования на общем стенде.
   workers: process.env.CI ? 1 : undefined,
-  // В CI пишем лог и HTML-artifact, но не пытаемся открыть браузерное окно на headless-runner.
-  reporter: [["list"], ["html", { open: process.env.CI ? "never" : "on-failure" }]],
+  reporter: reporters,
   projects: [
     {
       name: "unit",
