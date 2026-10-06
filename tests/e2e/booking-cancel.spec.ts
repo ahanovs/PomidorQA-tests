@@ -116,6 +116,14 @@ test.describe("Бронирование: отмена встречи", () => {
       );
     });
 
+    await test.step("Гость: у отменённой встречи нет кнопки «Отменить»", async () => {
+      const pastCard = guestBookingPage.pastBookingCard(host.host.name);
+      await expect(pastCard).toBeVisible();
+      await expect(
+        pastCard.getByRole("button", { name: "Отменить" }),
+      ).toHaveCount(0);
+    });
+
     await test.step("Гость: перезагружает страницу", async () => {
       await guestPage.reload();
     });
