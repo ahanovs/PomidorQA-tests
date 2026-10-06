@@ -319,14 +319,19 @@ jobs:
             esac
           }
 
-          # Общее время прогона — из GitHub API: от старта первой джобы до текущего шага.
-          # Если API недоступен, строка просто не попадёт в сообщение.
+          # Общее время прогона. Поле run_duration_ms у идущего прогона равно нулю —
+          # GitHub заполняет его только после завершения, а Telegram-шаг выполняется
+          # до этого. Поэтому считаем сами: run_started_at до текущего момента.
+          # HTTP-код пишем в лог шага — если время снова не придёт, причина будет там.
           duration_line=""
-          run_ms="$(curl -sf -H "Authorization: Bearer ${{ github.token }}" \
-            "${{ github.api_url }}/repos/${{ github.repository }}/actions/runs/${{ github.run_id }}" \
-            | jq -r '.run_duration_ms // empty' || true)"
-          if [ -n "$run_ms" ] && [ "$run_ms" -gt 0 ] 2>/dev/null; then
-            duration_line="⏱ Прогон: $(( run_ms / 60000 )) мин $(( (run_ms % 60000) / 1000 )) с"
+          http_code="$(curl -s -o /tmp/run.json -w '%{http_code}' \
+            -H "Authorization: Bearer ${{ github.token }}" \
+            "${{ github.api_url }}/repos/${{ github.repository }}/actions/runs/${{ github.run_id }}" || true)"
+          echo "actions API: HTTP $http_code"
+          run_started_at="$(jq -r '.run_started_at // empty' /tmp/run.json 2>/dev/null || true)"
+          if [ -n "$run_started_at" ]; then
+            elapsed=$(( $(date +%s) - $(date -d "$run_started_at" +%s) ))
+            duration_line="⏱ Прогон: $(( elapsed / 60 )) мин $(( elapsed % 60 )) с"
           fi
 
           text="🍅 PomidorQA CI — $( [ '${{ needs.quality.result }}' = 'success' ] && [ '${{ needs.unit.result }}' = 'success' ] && [ '${{ needs.api.result }}' = 'success' ] && [ '${{ needs.e2e.result }}' = 'success' ] && echo 'всё зелёное ✅' || echo 'есть проблемы ❌' )
